@@ -8,6 +8,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.Random;
 import java.util.stream.Collectors;
+import java.util.Set;
+import java.util.HashSet;
+import java.util.Iterator;
 
 public class Graph {
 
@@ -142,19 +145,195 @@ public class Graph {
     // STUDENT CODE STARTS HERE
 
     public void generateRandomVertices(int n) {
-        vertexNames = new HashMap<>(); // reset the vertex hashmap
 
-        // Your code here...
+            vertexNames = new HashMap<>(); // reset the vertex hashmap
 
-        computeAllEuclideanDistances(); // compute distances
+            Random r = new Random ();
+
+            for (int i=0; i<n; i++) {
+
+                Vertex v = new Vertex (i, r.nextInt (100), r.nextInt (100));
+
+                addVertex (v);
+
+                // add this new Vertex as an edge to each one of the previous edges
+                for (int j=i-1; j>=0; j--) {
+
+                    //addEdge (i, j, 0.0);
+                    addUndirectedEdge(i, j, 0.0);
+
+                }
+            }
+
+            computeAllEuclideanDistances(); // compute distances
     }
 
     public List<Edge> nearestNeighborTsp() {
-        return null; // replace this line
+        Random r = new Random ();
+        Vertex startVertex = vertexNames.get (r.nextInt (vertexNames.size()));
+
+        ArrayList<Edge> edges = new ArrayList<> ();
+
+        HashSet<Vertex> visited = new HashSet <> ();
+
+        Double distance = 0.0;
+        System.out.println ("Start: " + startVertex + ", distance : " + distance);
+        Vertex nextVertex = startVertex;
+        visited.add (nextVertex);
+
+        while (visited.size() < vertexNames.size()) {
+
+            Iterator i = nextVertex.adjacentEdges.iterator();
+            Edge closest = null;
+
+            while (i.hasNext()) {
+
+                Edge nextEdge = (Edge) i.next();
+
+                if (visited.contains (nextEdge.target)) {
+                    continue;
+                }
+                if (closest == null) {
+                    closest = nextEdge;
+                    continue;
+                }
+
+                if (closest.distance > nextEdge.distance) {
+                    closest = nextEdge;
+                }
+            }
+
+
+            // add closest to edges and move nextVertex to
+            // target of the closest edge and mark it as visited
+            distance += closest.distance;
+            edges.add (closest);
+            nextVertex = closest.target;
+            visited.add (nextVertex);
+            System.out.println ("Next : " + nextVertex + ", distance : " + distance);
+        }
+
+        // add the return from the last edge to starting point
+        Edge nextEdge = getEdge (nextVertex, startVertex);
+        edges.add (nextEdge);
+        distance += nextEdge.distance;
+        System.out.println ("Back : " + nextEdge.target + ", distance : " + distance);
+
+        return edges;
+    }
+
+    // Return the edge that connects Source to Target
+    private Edge getEdge (Vertex source, Vertex target) {
+        Iterator i = source.adjacentEdges.iterator();
+
+        while (i.hasNext()) {
+            Edge nextEdge = (Edge) i.next();
+            if (nextEdge.target == target) {
+                return nextEdge;
+            }
+        }
+        System.err.println("Could not find an edge on " + source + " for " + target);
+        return null;
+
+    }
+
+
+    //
+    // Generating permutation using Heap Algorithm for a list if names which are int's
+    // https://www.geeksforgeeks.org/heaps-algorithm-for-generating-permutations/
+    //
+    static void heapPermutation(int a[], int size, ArrayList<int []> output)
+    {
+        // if size becomes 1 then prints the obtained
+        // permutation
+        if (size == 1) {
+            int b[] = a.clone();
+            // add the first one to the last slot for the return
+            b[b.length-1] = b[0];
+            output.add(b);
+        }
+
+        for (int i=0; i<size; i++)
+        {
+            heapPermutation(a, size-1, output);
+
+            // if size is odd, swap first and last
+            // element
+            if (size % 2 == 1)
+            {
+                int temp = a[0];
+                a[0] = a[size-1];
+                a[size-1] = temp;
+            }
+
+            // If size is even, swap ith and last
+            // element
+            else
+            {
+                int temp = a[i];
+                a[i] = a[size-1];
+                a[size-1] = temp;
+            }
+        }
+    }
+    static private void printPerm (int perm []) {
+        for (int i=0; i<perm.length; i++)
+            System.out.print(perm[i] + " ");
+        System.out.println();
+    }
+
+    // used for testing the heap Algorithm
+    public static void main (String args[]) {
+        int [] a = {1, 2, 3, 0};
+        ArrayList<int []> output = new ArrayList<> ();
+        heapPermutation (a, a.length-1, output);
+        for (int [] one: output) {
+            printPerm (one);
+        }
     }
 
     public List<Edge> bruteForceTsp() {
-        return null; // replace this line
+        // make a list of names (int's) to be used
+        // in the haapAlgorithm to build all permuations
+        // of vertexes
+        Set<Integer> keys = vertexNames.keySet();
+        // +1 since need to return to the starting point.
+        // need one extra to add the starting vertex name
+        int names [] = new int [vertexNames.size()+1];
+        Iterator it = keys.iterator();
+        int index = 0;
+        while (it.hasNext()) {
+            names[index] = ((Integer)it.next()).intValue();
+            index++;
+        }
+
+        ArrayList<int []> perms = new ArrayList<> ();
+        heapPermutation(names, names.length-1, perms);
+
+        ArrayList<Edge> shortest = new ArrayList<> ();
+        double shortDist = Double.MAX_VALUE;
+        // Iterate over each permutation to find total distance
+        // and save shortest.
+        for (int one[] : perms) {
+            double currDist = 0;
+            ArrayList<Edge> currEdges = new ArrayList<>();
+            // calculate the distance for this permutation of Vertexes.
+            for (int i=1; i < one.length; i++) {
+                Vertex source = vertexNames.get (one[i-1]);
+                Vertex target = vertexNames.get (one[i]);
+                Edge edge = getEdge (source, target);
+                currDist += edge.distance;
+                currEdges.add (edge);
+            }
+            printPerm (one);
+            System.out.println (shortDist + ", CurrDist : " + currDist);
+            if (currDist < shortDist) {
+                shortDist = currDist;
+                shortest = currEdges;
+            }
+        }
+
+        return shortest;
     }
 
     // STUDENT CODE ENDS HERE
